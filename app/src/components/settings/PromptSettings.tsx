@@ -1,9 +1,18 @@
-import { Accordion, Button, Loader, Modal, Switch, Text } from "@mantine/core";
+import {
+	Accordion,
+	Button,
+	Loader,
+	Modal,
+	Switch,
+	Text,
+	Textarea,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
 import { match } from "ts-pattern";
 import {
 	useDefaultSections,
+	useMemoryMarkdownView,
 	useSettings,
 	useUpdateCleanupPromptSections,
 	useUpdateLLMFormattingEnabled,
@@ -32,6 +41,15 @@ export function PromptSettings() {
 	const llmTimeoutRawFallbackMutation = useUpdateLLMTimeoutRawFallbackEnabled();
 	const activeAppContextMutation = useUpdateSendActiveAppContextEnabled();
 	const memoryEnabledMutation = useUpdateMemoryEnabled();
+	const isMemoryEnabled = settings?.memory_enabled ?? false;
+	const {
+		data: memoryMarkdown,
+		error: memoryMarkdownError,
+		isError: hasMemoryMarkdownLoadError,
+		isFetching: isMemoryMarkdownFetching,
+		isLoading: isMemoryMarkdownLoading,
+		refetch: refetchMemoryMarkdown,
+	} = useMemoryMarkdownView(isMemoryEnabled);
 
 	// Modal for warning when disabling LLM formatting
 	const [disableWarningOpened, disableWarningHandlers] = useDisclosure(false);
@@ -194,6 +212,10 @@ export function PromptSettings() {
 
 	// Check if LLM formatting is disabled
 	const isLLMFormattingDisabled = settings?.llm_formatting_enabled === false;
+	const memoryMarkdownErrorMessage =
+		memoryMarkdownError instanceof Error
+			? memoryMarkdownError.message
+			: "Unable to load memory markdown.";
 
 	const handleLLMFormattingToggle = (checked: boolean) => {
 		if (!checked) {
@@ -306,25 +328,106 @@ export function PromptSettings() {
 						color="gray"
 					/>
 				</div>
-				<div className="settings-row">
-					<div>
-						<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-							<p className="settings-label">Enable Memory</p>
-							<StatusIndicator status={memoryEnabledMutation.status} />
-						</div>
-						<p className="settings-description">
-							Store cross-session context in a local markdown file
-						</p>
-					</div>
-					<Switch
-						checked={settings?.memory_enabled ?? false}
-						onChange={(event) =>
-							handleMemoryToggle(event.currentTarget.checked)
-						}
-						disabled={memoryEnabledMutation.isPending}
-						size="md"
-						color="gray"
-					/>
+				<div style={{ paddingTop: 12 }}>
+					<Accordion variant="separated" radius="md">
+						<Accordion.Item value="memory-markdown">
+							<Accordion.Control>
+								<div
+									style={{
+										display: "flex",
+										justifyContent: "space-between",
+										alignItems: "center",
+										width: "100%",
+										paddingRight: 12,
+									}}
+								>
+									<div>
+										<div
+											style={{ display: "flex", alignItems: "center", gap: 8 }}
+										>
+											<p className="settings-label">Enable Memory</p>
+											<StatusIndicator status={memoryEnabledMutation.status} />
+										</div>
+										<p className="settings-description">
+											Store cross-session context in a local markdown file
+										</p>
+									</div>
+									<Switch
+										checked={isMemoryEnabled}
+										onChange={(event) => {
+											event.stopPropagation();
+											handleMemoryToggle(event.currentTarget.checked);
+										}}
+										onClick={(event) => event.stopPropagation()}
+										disabled={memoryEnabledMutation.isPending}
+										size="md"
+										color="gray"
+									/>
+								</div>
+							</Accordion.Control>
+							<Accordion.Panel>
+								{!isMemoryEnabled ? (
+									<Text size="sm" c="dimmed">
+										Memory content is hidden while memory is disabled.
+									</Text>
+								) : isMemoryMarkdownLoading ? (
+									<div
+										style={{
+											display: "flex",
+											justifyContent: "center",
+											padding: "12px 0",
+											width: "100%",
+										}}
+									>
+										<Loader size="sm" color="gray" />
+									</div>
+								) : hasMemoryMarkdownLoadError ? (
+									<div
+										style={{
+											width: "100%",
+											display: "flex",
+											flexDirection: "column",
+											gap: 8,
+										}}
+									>
+										<Text size="sm" c="red">
+											Failed to load memory content:{" "}
+											{memoryMarkdownErrorMessage}
+										</Text>
+										<div>
+											<Button
+												variant="light"
+												size="xs"
+												onClick={() => {
+													void refetchMemoryMarkdown();
+												}}
+												loading={isMemoryMarkdownFetching}
+											>
+												Retry
+											</Button>
+										</div>
+									</div>
+								) : (
+									<Textarea
+										value={memoryMarkdown ?? ""}
+										readOnly
+										autosize
+										minRows={6}
+										maxRows={14}
+										styles={{
+											input: {
+												backgroundColor: "var(--bg-elevated)",
+												borderColor: "var(--border-default)",
+												color: "var(--text-primary)",
+												fontFamily: "monospace",
+												fontSize: "13px",
+											},
+										}}
+									/>
+								)}
+							</Accordion.Panel>
+						</Accordion.Item>
+					</Accordion>
 				</div>
 			</div>
 

@@ -542,6 +542,17 @@ export function useUpdateSendActiveAppContextEnabled() {
 	});
 }
 
+export function useMemoryMarkdownView(isMemoryEnabled: boolean) {
+	return useQuery({
+		queryKey: ["memoryMarkdownView"],
+		queryFn: () => tauriAPI.readMemoryMarkdown(),
+		enabled: isMemoryEnabled,
+		staleTime: STALE_TIME_ALWAYS_REFETCH,
+		refetchOnMount: "always",
+		retry: false,
+	});
+}
+
 // Memory enabled mutation
 export function useUpdateMemoryEnabled() {
 	const queryClient = useQueryClient();
