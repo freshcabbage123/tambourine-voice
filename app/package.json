@@ -16,8 +16,8 @@
 		"cargo:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml",
 		"cargo:test": "cargo test --quiet --locked --manifest-path src-tauri/Cargo.toml",
 		"cargo:check": "pnpm run cargo:clippy && pnpm run cargo:fmt && pnpm run cargo:test",
-		"cargo:update": "cargo update --manifest-path src-tauri/Cargo.toml",
-		"update": "pnpm update --latest && pnpm run cargo:update",
+		"cargo:upgrade": "cargo upgrade --manifest-path src-tauri/Cargo.toml",
+		"update": "pnpm update --latest && pnpm run cargo:upgrade",
 		"check": "pnpm run lint && pnpm run typecheck && pnpm run knip && pnpm test && pnpm run cargo:check",
 		"tauri": "tauri"
 	},
