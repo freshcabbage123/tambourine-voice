@@ -13,8 +13,11 @@ This is highly feasible with the current codebase. The core pieces already exist
 
 - WebRTC signaling + pipeline lifecycle on server (`server/main.py`)
 - Typed client/server message protocol (`server/protocol/messages.py`, `server/protocol/providers.py`)
-- Runtime config APIs (prompts, timeout, formatting, providers) (`server/api/config_api.py`)
-- Robust client connection/reconnect flow (`app/src/machines/connectionMachine.ts`)
+- Split runtime config surface:
+  - HTTP for prompt sections, LLM formatting, and STT timeout (`server/api/config_api.py`)
+  - RTVI messages for provider switching and recording control (`server/protocol/messages.py`, `server/processors/configuration.py`)
+- Robust client connection/reconnect flow plus safe message send logic (`app/src/machines/connectionMachine.ts`, `app/src/lib/safeSendClientMessage.ts`)
+- Existing client-side config sync logic for the HTTP config endpoints (`app/src-tauri/src/config_sync.rs`)
 
 The main missing piece is productization for multi-tenant public use:
 
@@ -24,7 +27,9 @@ The main missing piece is productization for multi-tenant public use:
 
 ## Current Reusable Contract
 
-The current protocol is already close to an SDK contract:
+The current protocol is already close to an SDK contract, but it is now explicitly split between REST endpoints and RTVI messages.
+
+### HTTP endpoints
 
 - Register + verify client UUID:
   - `POST /api/client/register`
@@ -35,13 +40,36 @@ The current protocol is already close to an SDK contract:
   - `POST /api/offer`
   - `PATCH /api/offer`
 - Runtime config:
-  - `GET /api/providers`
   - `GET /api/prompt/sections/default`
   - `PUT /api/config/prompts`
-  - `PUT /api/config/stt-timeout`
   - `PUT /api/config/llm-formatting`
+  - `PUT /api/config/stt-timeout`
+  - `GET /api/providers`
 
-RTVI messages are also typed and forward-compatible (`Unknown*` patterns), which is exactly what you want for SDK stability.
+Notes:
+
+- `PUT /api/config/*` endpoints are per-client and require `X-Client-UUID`.
+- `GET /api/providers` is global, but today it only returns provider/model info after at least one active connection has initialized provider services. A public SDK/server surface should remove that dependency.
+
+### RTVI client messages
+
+- Recording control:
+  - `start-recording`
+  - `stop-recording`
+- Per-recording metadata:
+  - `start-recording` can include optional `active_app_context`
+- Runtime provider switching:
+  - `set-stt-provider`
+  - `set-llm-provider`
+
+### RTVI server messages
+
+- `raw-transcription`
+- `recording-complete-with-zero-words`
+- `config-updated`
+- `config-error`
+
+RTVI messages and provider selections are typed and forward-compatible (`Unknown*` / `Other*` patterns), which is exactly what you want for SDK stability.
 
 ## Proposed Product Architecture
 
@@ -54,11 +82,16 @@ RTVI messages are also typed and forward-compatible (`Unknown*` patterns), which
 - `client.disconnect()`
 - `client.startRecording({ activeAppContext? })`
 - `client.stopRecording()`
-- `client.updateProviders({ stt, llm })`
-- `client.updateFormatting({ enabled, promptSections, sttTimeoutSeconds })`
+- `client.setProviders({ stt, llm })`
+- `client.updatePromptSections(promptSections)`
+- `client.setLlmFormattingEnabled(enabled)`
+- `client.setSttTimeoutSeconds(seconds)`
+- `client.getDefaultPromptSections()`
+- `client.getAvailableProviders()`
 - event callbacks:
   - `onTranscriptRaw`
-  - `onTranscriptFinal`
+  - `onEmptyTranscript`
+  - `onConfigUpdated`
   - `onError`
   - `onConnectionStateChange`
 
@@ -94,10 +127,11 @@ This avoids exposing a root secret in browser/mobile clients.
 1. Add auth middleware to all `/api/*` endpoints.
 2. Replace in-memory registration with tenant-aware storage:
    - `(project_id, client_uuid, status, last_seen_at)`
-3. Add usage accounting and limits:
+3. Decouple `/api/providers` from live connection state so discovery works before the first session is established.
+4. Add usage accounting and limits:
    - connection minutes, STT seconds, LLM tokens
-4. Keep existing UUID behavior, but bind UUID to project/session.
-5. Version the public API:
+5. Keep existing UUID behavior, but bind UUID to project/session.
+6. Version the public API:
    - `/v1/client/register`, `/v1/offer`, etc.
 
 ## SDK Extraction Plan from Existing App Code
@@ -108,8 +142,12 @@ This avoids exposing a root secret in browser/mobile clients.
   - `app/src/machines/connectionMachine.ts`
 - Safe RTVI send logic:
   - `app/src/lib/safeSendClientMessage.ts`
+- HTTP runtime config sync patterns:
+  - `app/src-tauri/src/config_sync.rs`
 - Typed provider selection/parsing:
   - `app/src/lib/tauri.ts` provider types + parsers
+- Active app context payload shape:
+  - `app/src/lib/activeAppContext.ts`
 
 ### Keep app-specific (do not put in SDK core)
 
@@ -122,7 +160,9 @@ This avoids exposing a root secret in browser/mobile clients.
 ### Phase 1: Internal SDK package
 
 - Move reusable TS client logic into `packages/sdk-web`
-- Keep same server endpoints (no auth changes yet)
+- Keep the current split contract:
+  - REST for registration, ICE, offer/patch, prompt config, timeout, and LLM formatting
+  - RTVI for recording control and provider switching
 - Add an example web app in `examples/`
 
 ### Phase 2: Auth + tenant layer
