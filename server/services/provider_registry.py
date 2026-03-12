@@ -38,6 +38,7 @@ from protocol.providers import LLMProviderId, STTProviderId
 
 # Custom service for Nemotron ASR
 from services.nvidia_stt import NVidiaWebSocketSTTService
+from services.speechmatics_stt import ReconnectingSpeechmaticsSTTService
 
 if TYPE_CHECKING:
     from config.settings import Settings
@@ -200,7 +201,7 @@ STT_PROVIDERS: Final[dict[STTProviderId, STTProviderConfig]] = {
     STTProviderId.SPEECHMATICS: STTProviderConfig(
         provider_id=STTProviderId.SPEECHMATICS,
         display_name="Speechmatics",
-        service_class=SpeechmaticsSTTService,
+        service_class=ReconnectingSpeechmaticsSTTService,
         credential_mapper=ApiKeyMapper("speechmatics_api_key"),
         default_kwargs={
             "params": SpeechmaticsSTTService.InputParams(
