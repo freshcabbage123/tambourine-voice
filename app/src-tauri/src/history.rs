@@ -36,7 +36,7 @@ pub struct HistoryImportResult {
 /// Unique identifier for a history entry.
 /// Uses a UUID represented as a string for JSON compatibility.
 /// This newtype enforces at compile-time that we don't accidentally
-/// mix HistoryEntryId with arbitrary strings.
+/// mix `HistoryEntryId` with arbitrary strings.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct HistoryEntryId(String);
 
