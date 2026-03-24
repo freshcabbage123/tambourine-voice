@@ -33,10 +33,41 @@ pub struct HistoryImportResult {
     pub entries_skipped: Option<usize>,
 }
 
+/// Unique identifier for a history entry.
+/// Uses a UUID represented as a string for JSON compatibility.
+/// This newtype enforces at compile-time that we don't accidentally
+/// mix HistoryEntryId with arbitrary strings.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct HistoryEntryId(String);
+
+impl HistoryEntryId {
+    /// Generate a new unique history entry ID from a UUID
+    pub fn new() -> Self {
+        Self(Uuid::new_v4().to_string())
+    }
+
+    /// Get the string representation of this ID
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Default for HistoryEntryId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AsRef<str> for HistoryEntryId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 /// A single dictation history entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HistoryEntry {
-    pub id: String,
+    pub id: HistoryEntryId,
     pub timestamp: DateTime<Utc>,
     pub text: String,
     #[serde(default)]
@@ -52,7 +83,7 @@ impl HistoryEntry {
         active_app_context: Option<ActiveAppContextSnapshot>,
     ) -> Self {
         Self {
-            id: Uuid::new_v4().to_string(),
+            id: HistoryEntryId::new(),
             timestamp: Utc::now(),
             text,
             raw_text,
@@ -214,16 +245,17 @@ impl HistoryStorage {
     }
 
     /// Delete an entry by ID
-    pub fn delete(&self, id: &str) -> Result<bool> {
+    pub fn delete(&self, id: &HistoryEntryId) -> Result<bool> {
         let deleted = {
             let mut history_data = self.data.write().map_err(|error| {
                 anyhow::anyhow!(
-                    "Failed to acquire history write lock when deleting entry {id}: {error}"
+                    "Failed to acquire history write lock when deleting entry {}: {error}",
+                    id.as_str()
                 )
             })?;
 
             let initial_entry_count = history_data.entries.len();
-            history_data.entries.retain(|entry| entry.id != id);
+            history_data.entries.retain(|entry| entry.id != *id);
             history_data.entries.len() < initial_entry_count
         };
 
@@ -289,7 +321,7 @@ impl HistoryStorage {
                 }
                 HistoryImportStrategy::MergeDeduplicate => {
                     // Collect existing IDs
-                    let existing_entry_ids: HashSet<String> = history_data
+                    let existing_entry_ids: HashSet<HistoryEntryId> = history_data
                         .entries
                         .iter()
                         .map(|entry| entry.id.clone())
@@ -383,7 +415,7 @@ mod tests {
             .expect("failed to load legacy history entries");
 
         assert_eq!(loaded_entries.len(), 1);
-        assert_eq!(loaded_entries[0].id, "legacy-entry-id");
+        assert_eq!(loaded_entries[0].id.as_str(), "legacy-entry-id");
         assert_eq!(loaded_entries[0].raw_text, "");
         assert!(loaded_entries[0].active_app_context.is_none());
     }

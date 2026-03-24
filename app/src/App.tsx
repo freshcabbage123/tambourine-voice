@@ -77,7 +77,6 @@ function ConnectionStatusIndicator() {
 
 	return (
 		<Tooltip label={statusText} position="right" withArrow>
-			{/* biome-ignore lint/a11y/useSemanticElements: status role is semantically correct for dynamic connection status */}
 			<div className="connection-status" role="status" aria-label={statusText}>
 				{isConnecting ? (
 					<Loader size={10} color="gray" />

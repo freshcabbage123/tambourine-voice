@@ -16,7 +16,7 @@ import {
 	useDeleteHistoryEntry,
 	useHistory,
 } from "../lib/queries";
-import type { HistoryEntry } from "../lib/tauri";
+import type { HistoryEntry, HistoryEntryId } from "../lib/tauri";
 import { tauriAPI } from "../lib/tauri";
 
 function formatTime(timestamp: string): string {
@@ -60,7 +60,7 @@ function groupHistoryByDate(history: HistoryEntry[]): GroupedHistory[] {
 interface HistoryItemProps {
 	entry: HistoryEntry;
 	onCopy: (text: string) => void;
-	onDelete: (id: string) => void;
+	onDelete: (id: HistoryEntryId) => void;
 	isDeleting: boolean;
 }
 
@@ -206,7 +206,7 @@ export function HistoryFeed() {
 	}, [queryClient]);
 
 	const handleDelete = useCallback(
-		(id: string) => {
+		(id: HistoryEntryId) => {
 			deleteEntry.mutate(id);
 		},
 		[deleteEntry],

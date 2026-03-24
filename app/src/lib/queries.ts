@@ -70,6 +70,7 @@ import {
 	type DetectedFileType,
 	type FactoryResetOutcome,
 	getProviderIdFromSelection,
+	type HistoryEntryId,
 	type HistoryImportStrategy,
 	type HotkeyConfig,
 	type ImportSettingsOutcome,
@@ -384,7 +385,7 @@ export function useAddHistoryEntry() {
 export function useDeleteHistoryEntry() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (id: string) => tauriAPI.deleteHistoryEntry(id),
+		mutationFn: (id: HistoryEntryId) => tauriAPI.deleteHistoryEntry(id),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["history"] });
 			// Notify other windows about history change

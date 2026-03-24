@@ -1,5 +1,5 @@
 use crate::active_app_context::ActiveAppContextSnapshot;
-use crate::history::{HistoryEntry, HistoryStorage};
+use crate::history::{HistoryEntry, HistoryEntryId, HistoryStorage};
 use tauri::State;
 
 /// Add a new entry to the dictation history
@@ -27,7 +27,7 @@ pub async fn get_history(
 /// Delete a history entry by ID
 #[tauri::command]
 pub async fn delete_history_entry(
-    id: String,
+    id: HistoryEntryId,
     history: State<'_, HistoryStorage>,
 ) -> Result<bool, String> {
     history.delete(&id).map_err(|error| error.to_string())

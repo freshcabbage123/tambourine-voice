@@ -303,6 +303,13 @@ interface TypeTextResult {
 	error?: string;
 }
 
+/**
+ * Unique identifier for a history entry.
+ * Uses string internally for JSON compatibility, but the type prevents
+ * accidental mixing with arbitrary strings at compile time.
+ */
+export type HistoryEntryId = string & { readonly __brand: "HistoryEntryId" };
+
 export interface HotkeyConfig {
 	modifiers: string[];
 	key: string;
@@ -323,7 +330,7 @@ export interface ShortcutRegistrationResult {
 }
 
 export interface HistoryEntry {
-	id: string;
+	id: HistoryEntryId;
 	timestamp: string;
 	text: string;
 	raw_text: string;
@@ -655,7 +662,7 @@ export const tauriAPI = {
 		return invoke("get_history", { limit });
 	},
 
-	async deleteHistoryEntry(id: string): Promise<boolean> {
+	async deleteHistoryEntry(id: HistoryEntryId): Promise<boolean> {
 		return invoke("delete_history_entry", { id });
 	},
 
