@@ -141,23 +141,32 @@ export function ProvidersSettings() {
 
 	// Get display value for dropdown:
 	// - During mutation: show what user selected (mutation.variables.value)
-	// - Otherwise: show confirmed value from store
-	const sttDisplayValue = sttMutation.isPending
-		? sttMutation.variables?.value
-		: (settings?.stt_provider ?? "auto");
-	const llmDisplayValue = llmMutation.isPending
-		? llmMutation.variables?.value
-		: (settings?.llm_provider ?? "auto");
+	// - Otherwise: show confirmed value from local store, or "auto" if unavailable
+	const sttCandidate = sttMutation.isPending
+		? (sttMutation.variables?.value)
+		: (settings?.stt_provider);
+	const isSttAvailable =
+		sttCandidate === "auto" ||
+		availableProviders?.stt.some((p) => p.value === sttCandidate);
+	const sttDisplayValue = isSttAvailable ? sttCandidate : "auto";
+
+	const llmCandidate = llmMutation.isPending
+		? (llmMutation.variables?.value)
+		: (settings?.llm_provider);
+	const isLlmAvailable =
+		llmCandidate === "auto" ||
+		availableProviders?.llm.some((p) => p.value === llmCandidate);
+	const llmDisplayValue = isLlmAvailable ? llmCandidate : "auto";
 
 	// Determine if currently selected provider is local (only show badge for non-auto providers)
 	const selectedSttProvider = availableProviders?.stt.find(
-		(p) => p.value === settings?.stt_provider,
+		(p) => p.value === sttDisplayValue,
 	);
 	const selectedLlmProvider = availableProviders?.llm.find(
-		(p) => p.value === settings?.llm_provider,
+		(p) => p.value === llmDisplayValue,
 	);
-	const isSttProviderAuto = settings?.stt_provider === "auto";
-	const isLlmProviderAuto = settings?.llm_provider === "auto";
+	const isSttProviderAuto = sttDisplayValue === "auto";
+	const isLlmProviderAuto = llmDisplayValue === "auto";
 	const isSttProviderLocal = selectedSttProvider?.is_local ?? false;
 	const isLlmProviderLocal = selectedLlmProvider?.is_local ?? false;
 
